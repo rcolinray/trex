@@ -12,5 +12,6 @@ mod time;
 pub use component::ComponentStore;
 pub use entity::{Entity, EntityStore};
 pub use event::EventQueue;
+pub use simulation::Halt;
 pub use system::System;
 pub use time::calc_millis;

@@ -1,3 +1,5 @@
+pub struct Halt;
+
 #[macro_export]
 macro_rules! simulation {
     {
@@ -15,11 +17,9 @@ macro_rules! simulation {
             $( $system:ident : $S:ident ),*
         }
     } => {
-        pub struct Halt;
-
         pub struct World {
             pub entities: $crate::EntityStore,
-            pub halt: $crate::EventQueue<Halt>,
+            pub halt: $crate::EventQueue<$crate::Halt>,
 
             $(
                 pub $store: $crate::ComponentStore<$C>,

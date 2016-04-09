@@ -112,7 +112,7 @@ impl System<World> for CommandSystem {
                 },
 
                 "quit" => {
-                    world.halt.emit(Halt);
+                    world.halt.emit(trex::Halt);
                 },
 
                 _ => {
