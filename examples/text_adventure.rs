@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate trex;
+extern crate ansi_term;
 
 use std::io::{self, Write};
 use std::thread::{spawn, sleep};
@@ -7,6 +8,8 @@ use std::sync::mpsc::{channel, Receiver};
 use std::time::{Duration, SystemTime};
 
 use trex::{Entity, System, calc_millis};
+
+use ansi_term::Style;
 
 #[derive(Debug)]
 pub struct Room {
@@ -106,20 +109,23 @@ impl System<World> for CommandSystem {
                     let actor = world.actors.get(player).unwrap();
                     let room = world.rooms.get(actor.room).unwrap();
 
-                    let output = format!("{}:\n{}\n", room.name, room.description);
+                    let output = format!("{}\n{}\n",
+                        Style::new().bold().underline().paint(room.name.clone()),
+                        room.description);
                     world.output.emit(Output(output));
-                    world.output.emit(Output(String::from("> ")));
                 },
 
                 "quit" => {
                     world.halt.emit(trex::Halt);
+                    break;
                 },
 
                 _ => {
                     world.output.emit(Output(String::from("Huh?\n")));
-                    world.output.emit(Output(String::from("> ")));
                 },
             };
+
+            world.output.emit(Output(String::from("> ")));
         }
     }
 }
