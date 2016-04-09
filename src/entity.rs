@@ -1,12 +1,15 @@
 use std::collections::HashMap;
 
+use vec_map::VecMap;
+
 use super::id;
 
 pub type Entity = id::Id;
 
 pub struct EntityStore {
     pool: id::IdPool,
-    tags: HashMap<&'static str, Entity>,
+    tags: HashMap<String, Entity>,
+    tags_by_entity: VecMap<String>,
 }
 
 impl EntityStore {
@@ -14,6 +17,7 @@ impl EntityStore {
         EntityStore {
             pool: id::IdPool::new(),
             tags: HashMap::new(),
+            tags_by_entity: VecMap::new(),
         }
     }
 
@@ -22,15 +26,19 @@ impl EntityStore {
     }
 
     pub fn tag(&mut self, entity: Entity, tag: &'static str) {
-        self.tags.insert(tag, entity);
+        self.tags.insert(tag.to_owned(), entity);
+        self.tags_by_entity.insert(entity, tag.to_owned());
     }
 
     pub fn get(&self, tag: &'static str) -> Option<Entity> {
-        self.tags.get(&tag).cloned()
+        self.tags.get(&tag.to_owned()).cloned()
     }
 
     pub fn destroy(&mut self, entity: Entity) {
         self.pool.release(entity);
+        if let Some(tag) = self.tags_by_entity.remove(entity) {
+            self.tags.remove(&tag);
+        }
     }
 
     pub fn exists(&self, entity: Entity) -> bool {
