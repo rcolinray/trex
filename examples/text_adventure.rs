@@ -133,16 +133,14 @@ impl System<Events> for CommandSystem {
 }
 
 simulation! {
-    world: {
-        components: {
-            Room: ROOM,
-            Actor: ACTOR
-        },
+    components: {
+        Room: ROOM,
+        Actor: ACTOR
+    },
 
-        events: {
-            input: Input,
-            output: Output
-        }
+    events: {
+        input: Input,
+        output: Output
     },
 
     systems: {

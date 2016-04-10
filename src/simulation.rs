@@ -3,14 +3,12 @@ pub struct Halt;
 #[macro_export]
 macro_rules! simulation {
     {
-        world: {
-            components: {
-                $( $C:ident : $F:ident ),*
-            },
+        components: {
+            $( $C:ident : $F:ident ),*
+        },
 
-            events: {
-                $( $queue:ident : $E:ident ),*
-            }
+        events: {
+            $( $queue:ident : $E:ident ),*
         },
 
         systems: {
