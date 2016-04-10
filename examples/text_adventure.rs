@@ -9,7 +9,7 @@ use std::thread::{spawn, sleep};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::{Duration, SystemTime};
 
-use trex::{Entity, System, calc_millis};
+use trex::{Entity, World, System, calc_millis};
 
 use ansi_term::Style;
 
@@ -49,7 +49,7 @@ pub struct InputSystem {
     rx: Receiver<String>,
 }
 
-impl System<World> for InputSystem {
+impl System<Events> for InputSystem {
     fn new() -> InputSystem {
         let (tx, rx) = channel();
 
@@ -71,9 +71,9 @@ impl System<World> for InputSystem {
         }
     }
 
-    fn update(&mut self, world: &mut World, _dt: f32) {
+    fn update(&mut self, _world: &mut World, events: &mut Events, _dt: f32) {
         while let Ok(input) = self.rx.try_recv() {
-            world.input.emit(Input(input));
+            events.input.emit(Input(input));
         }
     }
 }
@@ -82,13 +82,13 @@ pub struct Output(pub String);
 
 pub struct OutputSystem;
 
-impl System<World> for OutputSystem {
+impl System<Events> for OutputSystem {
     fn new() -> OutputSystem {
         OutputSystem
     }
 
-    fn update(&mut self, world: &mut World, _dt: f32) {
-        for &Output(ref output) in world.output.receive() {
+    fn update(&mut self, _world: &mut World, events: &mut Events, _dt: f32) {
+        for &Output(ref output) in events.output.receive() {
             print!("{}", output);
         }
 
@@ -98,36 +98,36 @@ impl System<World> for OutputSystem {
 
 pub struct CommandSystem;
 
-impl System<World> for CommandSystem {
+impl System<Events> for CommandSystem {
     fn new() -> CommandSystem {
         CommandSystem
     }
 
-    fn update(&mut self, world: &mut World, _dt: f32) {
-        for &Input(ref input) in world.input.receive() {
+    fn update(&mut self, world: &mut World, events: &mut Events, _dt: f32) {
+        for &Input(ref input) in events.input.receive() {
             match input.trim() {
                 "look" => {
-                    let player = world.store.lookup("Player").unwrap();
-                    let actor = world.store.get::<Actor>(player).unwrap();
-                    let room = world.store.get::<Room>(actor.room).unwrap();
+                    let player = world.lookup("Player").unwrap();
+                    let actor = world.get::<Actor>(player).unwrap();
+                    let room = world.get::<Room>(actor.room).unwrap();
 
                     let output = format!("{}\n{}\n",
                         Style::new().bold().underline().paint(room.name.clone()),
                         room.description);
-                    world.output.emit(Output(output));
+                    events.output.emit(Output(output));
                 },
 
                 "quit" => {
-                    world.halt.emit(trex::Halt);
+                    events.halt.emit(trex::Halt);
                     break;
                 },
 
                 _ => {
-                    world.output.emit(Output(String::from("Huh?\n")));
+                    events.output.emit(Output(String::from("Huh?\n")));
                 },
             };
 
-            world.output.emit(Output(String::from("> ")));
+            events.output.emit(Output(String::from("> ")));
         }
     }
 }
@@ -155,19 +155,19 @@ simulation! {
 fn main() {
     let mut simulation = Simulation::new();
 
-    simulation.setup(|world| {
-        let player = world.store.create();
-        world.store.tag(player, "Player");
-        let entrance = world.store.create();
+    simulation.setup(|world, events| {
+        let player = world.create();
+        world.tag(player, "Player");
+        let entrance = world.create();
 
         let actor = Actor::new(entrance);
         let mut room = Room::new("Entrance", "You stand at the entrance to a dungeon.");
         room.entities.push(player);
 
-        world.store.add(player, actor);
-        world.store.add(entrance, room);
+        world.add(player, actor);
+        world.add(entrance, room);
 
-        world.output.emit(Output(String::from("> ")));
+        events.output.emit(Output(String::from("> ")));
     });
 
     let mut last = SystemTime::now();

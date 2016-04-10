@@ -30,7 +30,7 @@ impl ComponentFilter {
 
 pub type Entity = Id;
 
-pub struct EntityStore {
+pub struct World {
     masks: VecMap<BitSet>,
     stores: VecMap<Box<AnyComponentStore>>,
     pool: IdPool,
@@ -38,9 +38,9 @@ pub struct EntityStore {
     tags_by_entity: VecMap<String>,
 }
 
-impl EntityStore {
-    pub fn new() -> EntityStore {
-        EntityStore {
+impl World {
+    pub fn new() -> World {
+        World {
             masks: VecMap::new(),
             stores: VecMap::new(),
             pool: IdPool::new(),

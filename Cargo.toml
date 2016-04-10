@@ -1,6 +1,6 @@
 [package]
 name = "trex"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Colin Ray <r.colinray@gmail.com>"]
 
 [dependencies]

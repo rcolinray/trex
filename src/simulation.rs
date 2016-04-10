@@ -23,8 +23,7 @@ macro_rules! simulation {
             }
         )*
 
-        pub struct World {
-            pub store: $crate::EntityStore,
+        pub struct Events {
             pub halt: $crate::EventQueue<$crate::Halt>,
 
             $(
@@ -32,16 +31,9 @@ macro_rules! simulation {
             )*
         }
 
-        impl World {
-            fn new() -> World {
-                World {
-                    store: {
-                        let mut store = $crate::EntityStore::new();
-                        $(
-                            store.register_component::<$C>();
-                        )*
-                        store
-                    },
+        impl Events {
+            fn new() -> Events {
+                Events {
                     halt: $crate::EventQueue::new(),
 
                     $(
@@ -52,7 +44,8 @@ macro_rules! simulation {
         }
 
         pub struct Simulation {
-            pub world: World,
+            world: World,
+            events: Events,
             received_halt: bool,
 
             $(
@@ -63,7 +56,14 @@ macro_rules! simulation {
         impl Simulation {
             pub fn new() -> Simulation {
                 Simulation {
-                    world: World::new(),
+                    world: {
+                        let mut world = World::new();
+                        $(
+                            world.register_component::<$C>();
+                        )+
+                        world
+                    },
+                    events: Events::new(),
                     received_halt: false,
                     $(
                         $system: $S::new()
@@ -71,23 +71,23 @@ macro_rules! simulation {
                 }
             }
 
-            pub fn setup<F>(&mut self, setup_fn: F) where F: FnOnce(&mut World) {
-                setup_fn(&mut self.world);
+            pub fn setup<F>(&mut self, setup_fn: F) where F: FnOnce(&mut World, &mut Events) {
+                setup_fn(&mut self.world, &mut self.events);
             }
 
             pub fn update(&mut self, dt: f32) {
                 $(
-                    self.$system.update(&mut self.world, dt);
+                    self.$system.update(&mut self.world, &mut self.events, dt);
                 )*
 
                 $(
-                    self.world.$queue.flush();
+                    self.events.$queue.flush();
                 )*
 
-                if let Some(_) = self.world.halt.receive().next() {
+                if let Some(_) = self.events.halt.receive().next() {
                     self.received_halt = true;
                 }
-                self.world.halt.flush();
+                self.events.halt.flush();
             }
 
             pub fn received_halt(&self) -> bool {

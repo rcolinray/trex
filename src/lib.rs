@@ -14,7 +14,7 @@ mod system;
 mod time;
 
 pub use component::{Component, Family, next_family, ComponentStore};
-pub use entity::{Entity, EntityStore};
+pub use entity::{Entity, World};
 pub use event::EventQueue;
 pub use simulation::Halt;
 pub use system::System;
