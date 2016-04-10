@@ -102,7 +102,6 @@
 //! ```
 
 #[macro_use]
-extern crate lazy_static;
 extern crate vec_map;
 extern crate bit_set;
 
