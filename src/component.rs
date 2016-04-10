@@ -47,36 +47,80 @@ impl<T> ComponentPool<T> {
     }
 }
 
-pub struct ComponentStore<T> {
-    map: VecMap<Id>,
-    pool: ComponentPool<T>,
+pub type Family = usize;
+
+pub unsafe fn next_family() -> Family {
+    static mut NEXT_FAMILY: Family = 0;
+
+    let next = NEXT_FAMILY;
+    NEXT_FAMILY += 1;
+    next
 }
 
-impl<T> ComponentStore<T> {
-    pub fn new() -> ComponentStore<T> {
+pub trait Component: 'static {
+    fn family() -> Family;
+}
+
+#[macro_export]
+macro_rules! component {
+    { $C:ident : $F:ident } => {
+        lazy_static! {
+            pub static ref $F: $crate::Family = unsafe { $crate::next_family() };
+        }
+
+        impl $crate::Component for $C {
+            fn family() -> $crate::Family {
+                *$F
+            }
+        }
+    }
+}
+
+pub trait AnyComponentStore {
+    fn family(&self) -> Family;
+    fn remove(&mut self, entity: Entity);
+}
+
+pub struct ComponentStore<C: Component> {
+    map: VecMap<Id>,
+    pool: ComponentPool<C>,
+}
+
+impl<C: Component> ComponentStore<C> {
+    pub fn new() -> ComponentStore<C> {
         ComponentStore {
             map: VecMap::new(),
             pool: ComponentPool::new(),
         }
     }
 
-    pub fn add(&mut self, entity: Entity, data: T) {
+    pub fn has_component(&self, entity: Entity) -> bool {
+        self.map.contains_key(entity)
+    }
+
+    pub fn add(&mut self, entity: Entity, data: C) {
         let id = self.pool.add(data);
         self.map.insert(entity, id);
     }
 
-    pub fn get(&self, entity: Entity) -> Option<&T> {
+    pub fn get(&self, entity: Entity) -> Option<&C> {
         match self.map.get(entity) {
             Some(&id) => self.pool.get(id),
             None => None,
         }
     }
 
-    pub fn get_mut(&mut self, entity: Entity) -> Option<&mut T> {
+    pub fn get_mut(&mut self, entity: Entity) -> Option<&mut C> {
         match self.map.get(entity) {
             Some(&id) => self.pool.get_mut(id),
             None => None,
         }
+    }
+}
+
+impl<C: Component> AnyComponentStore for ComponentStore<C> {
+    fn family(&self) -> Family {
+        C::family()
     }
 
     fn remove(&mut self, entity: Entity) {
@@ -85,3 +129,4 @@ impl<T> ComponentStore<T> {
         }
     }
 }
+

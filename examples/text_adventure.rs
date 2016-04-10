@@ -1,4 +1,6 @@
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate trex;
 extern crate ansi_term;
 
@@ -105,9 +107,9 @@ impl System<World> for CommandSystem {
         for &Input(ref input) in world.input.receive() {
             match input.trim() {
                 "look" => {
-                    let player = world.entities.get("Player").unwrap();
-                    let actor = world.actors.get(player).unwrap();
-                    let room = world.rooms.get(actor.room).unwrap();
+                    let player = world.store.lookup("Player").unwrap();
+                    let actor = world.store.get::<Actor>(player).unwrap();
+                    let room = world.store.get::<Room>(actor.room).unwrap();
 
                     let output = format!("{}\n{}\n",
                         Style::new().bold().underline().paint(room.name.clone()),
@@ -133,8 +135,8 @@ impl System<World> for CommandSystem {
 simulation! {
     world: {
         components: {
-            rooms: Room,
-            actors: Actor
+            Room: ROOM,
+            Actor: ACTOR
         },
 
         events: {
@@ -154,16 +156,16 @@ fn main() {
     let mut simulation = Simulation::new();
 
     simulation.setup(|world| {
-        let player = world.entities.create();
-        world.entities.tag(player, "Player");
-        let entrance = world.entities.create();
+        let player = world.store.create();
+        world.store.tag(player, "Player");
+        let entrance = world.store.create();
 
         let actor = Actor::new(entrance);
         let mut room = Room::new("Entrance", "You stand at the entrance to a dungeon.");
         room.entities.push(player);
 
-        world.actors.add(player, actor);
-        world.rooms.add(entrance, room);
+        world.store.add(player, actor);
+        world.store.add(entrance, room);
 
         world.output.emit(Output(String::from("> ")));
     });

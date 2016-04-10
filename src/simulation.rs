@@ -5,7 +5,7 @@ macro_rules! simulation {
     {
         world: {
             components: {
-                $( $store:ident : $C:ident ),*
+                $( $C:ident : $F:ident ),*
             },
 
             events: {
@@ -17,13 +17,15 @@ macro_rules! simulation {
             $( $system:ident : $S:ident ),*
         }
     } => {
-        pub struct World {
-            pub entities: $crate::EntityStore,
-            pub halt: $crate::EventQueue<$crate::Halt>,
+        $(
+            component! {
+                $C : $F
+            }
+        )*
 
-            $(
-                pub $store: $crate::ComponentStore<$C>,
-            )*
+        pub struct World {
+            pub store: $crate::EntityStore,
+            pub halt: $crate::EventQueue<$crate::Halt>,
 
             $(
                 pub $queue: $crate::EventQueue<$E>,
@@ -33,12 +35,14 @@ macro_rules! simulation {
         impl World {
             fn new() -> World {
                 World {
-                    entities: $crate::EntityStore::new(),
+                    store: {
+                        let mut store = $crate::EntityStore::new();
+                        $(
+                            store.register_component::<$C>();
+                        )*
+                        store
+                    },
                     halt: $crate::EventQueue::new(),
-
-                    $(
-                        $store: $crate::ComponentStore::new(),
-                    )*
 
                     $(
                         $queue: $crate::EventQueue::new(),
@@ -49,32 +53,25 @@ macro_rules! simulation {
 
         pub struct Simulation {
             pub world: World,
-
             received_halt: bool,
 
             $(
-                $system: $S,
-            )*
+                $system : $S
+            ),*
         }
 
         impl Simulation {
             pub fn new() -> Simulation {
                 Simulation {
                     world: World::new(),
-
                     received_halt: false,
-
                     $(
-                        $system: $S::new(),
-                    )*
+                        $system: $S::new()
+                    ),*
                 }
             }
 
             pub fn setup<F>(&mut self, setup_fn: F) where F: FnOnce(&mut World) {
-                $(
-                    self.$system.setup(&mut self.world);
-                )*
-
                 setup_fn(&mut self.world);
             }
 

@@ -1,5 +1,9 @@
+#[macro_use]
+extern crate lazy_static;
 extern crate vec_map;
+extern crate bit_set;
 
+#[macro_use]
 mod component;
 mod entity;
 mod event;
@@ -9,7 +13,7 @@ mod simulation;
 mod system;
 mod time;
 
-pub use component::ComponentStore;
+pub use component::{Component, Family, next_family, ComponentStore};
 pub use entity::{Entity, EntityStore};
 pub use event::EventQueue;
 pub use simulation::Halt;
