@@ -1,5 +1,9 @@
+/// Internal event used to stop the `Simulation`. The `halt` event queue will always be created.
 pub struct Halt;
 
+/// The core wiring for entity component systems built on `trex`. This macro takes a set of
+/// `Component`s, events, and `System`s, and creates a `Simulation` type that manages them.
+/// See the library documentation for an example of how this macro is used.
 #[macro_export]
 macro_rules! simulation {
     {
@@ -42,12 +46,12 @@ macro_rules! simulation {
         }
 
         pub struct Simulation {
-            world: World,
-            events: Events,
+            pub world: World,
+            pub events: Events,
             received_halt: bool,
 
             $(
-                $system : $S
+                pub $system : $S
             ),*
         }
 

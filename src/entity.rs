@@ -7,29 +7,35 @@ use bit_set::BitSet;
 use super::id::{Id, IdPool};
 use super::component::{Component, AnyComponentStore, ComponentStore};
 
+/// Used to filter the list of entities based on the components that are attached to them.
 pub struct ComponentFilter {
     mask: BitSet,
 }
 
 impl ComponentFilter {
+    /// Create an empty `ComponentFilter`.
     pub fn new() -> ComponentFilter {
         ComponentFilter {
             mask: BitSet::new(),
         }
     }
 
-    pub fn has<C: Component>(mut self) -> Self {
+    /// Extend the filter to include the given component type.
+    pub fn with<C: Component>(mut self) -> Self {
         self.mask.insert(C::family());
         self
     }
 
+    /// Returns `true` if a given entity contains all of the required components, otherwise `false`.
     fn matches(&self, mask: &BitSet) -> bool {
         self.mask.is_subset(mask)
     }
 }
 
+/// Used to group components.
 pub type Entity = Id;
 
+/// Contains all entities and their components.
 pub struct World {
     masks: VecMap<BitSet>,
     stores: VecMap<Box<AnyComponentStore>>,
@@ -39,6 +45,7 @@ pub struct World {
 }
 
 impl World {
+    /// Create an empty `World`.
     pub fn new() -> World {
         World {
             masks: VecMap::new(),
@@ -49,15 +56,26 @@ impl World {
         }
     }
 
+    /// Register a new component class.
     pub fn register_component<C: Component>(&mut self) {
         let store = ComponentStore::<C>::new();
         self.stores.insert(C::family(), Box::new(store));
     }
 
+    /// Returns `true` if the entity has been created and is not destroyed, otherwise `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut world = trex::World::new();
+    /// let entity = world.create();
+    /// assert!(world.exists(entity));
+    /// ```
     pub fn exists(&self, entity: Entity) -> bool {
         self.pool.is_reserved(entity)
     }
 
+    /// Create a new `Entity`.
     pub fn create(&mut self) -> Entity {
         let entity = self.pool.reserve();
         self.accomodate_entity(entity);
@@ -67,12 +85,21 @@ impl World {
     fn accomodate_entity(&mut self, entity: Entity) {
         if self.masks.contains_key(entity) {
             self.masks.get_mut(entity).unwrap().clear();
-            self.clear_tag(entity);
         } else {
             self.masks.insert(entity, BitSet::new());
         }
     }
 
+    /// Assign a tag to the `Entity` so that it can be retrieved later.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut world = trex::World::new();
+    /// let entity = world.create();
+    /// world.tag(entity, "Example");
+    /// assert_eq!(world.lookup("Example"), Some(entity));
+    /// ```
     pub fn tag(&mut self, entity: Entity, tag: &str) {
         if self.exists(entity) {
             self.tags.insert(tag.to_owned(), entity);
@@ -80,21 +107,45 @@ impl World {
         }
     }
 
-    fn clear_tag(&mut self, entity: Entity) {
+    /// Remove the existing tag, if any, from an `Entity`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut world = trex::World::new();
+    /// let entity = world.create();
+    /// world.tag(entity, "Example");
+    /// world.untag(entity);
+    /// assert_eq!(world.lookup("Example"), None);
+    /// ```
+    pub fn untag(&mut self, entity: Entity) {
         if let Some(tag) = self.tags_by_entity.remove(entity) {
             self.tags.remove(&tag);
         }
     }
 
+    /// Retreive an `Entity` using a tag.
     pub fn lookup(&self, tag: &str) -> Option<Entity> {
         let owned = tag.to_owned();
         self.tags.get(&owned).cloned()
     }
 
+    /// Destroy an existing `Entity`. Also removes the tag and any attached components.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut world = trex::World::new();
+    /// let entity = world.create();
+    /// world.tag(entity, "Example");
+    /// world.destroy(entity);
+    /// assert_eq!(world.lookup("Example"), None);
+    /// ```
     pub fn destroy(&mut self, entity: Entity) {
         if self.exists(entity) {
             self.pool.release(entity);
             self.remove_all_components(entity);
+            self.untag(entity);
         }
     }
 
@@ -106,6 +157,7 @@ impl World {
         }
     }
 
+    /// Returns a list of all `Entity`s with a given set of `Component`s.
     pub fn filter_entities(&self, filter: &ComponentFilter) -> Vec<Entity> {
         self.pool.reserved()
             .filter(|&entity| {
@@ -115,11 +167,13 @@ impl World {
             .collect::<Vec<Entity>>()
     }
 
+    /// Attach a `Component` to an `Entity`.
     pub fn add<C: Component>(&mut self, entity: Entity, component: C) {
         self.set_has_component::<C>(entity, true);
         self.get_store_mut::<C>().add(entity, component);
     }
 
+    /// Remove a `Component` from an `Entity`.
     pub fn remove<C: Component>(&mut self, entity: Entity) {
         self.set_has_component::<C>(entity, false);
         self.get_store_mut::<C>().remove(entity);
@@ -136,16 +190,19 @@ impl World {
         }
     }
 
+    /// Returns `true` if the `Entity` has the `Component`, otherwise `false`.
     pub fn has<C: Component>(&self, entity: Entity) -> bool {
         let mask = self.masks.get(entity).unwrap();
         mask.contains(C::family())
     }
 
+    /// Get a `Component` of an `Entity`.
     pub fn get<C: Component>(&self, entity: Entity) -> Option<&C> {
         let store = self.get_store::<C>();
         store.get(entity)
     }
 
+    /// Get a mutable `Component` of an `Entity`.
     pub fn get_mut<C: Component>(&mut self, entity: Entity) -> Option<&mut C> {
         let store = self.get_store_mut::<C>();
         store.get_mut(entity)

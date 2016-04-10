@@ -47,8 +47,11 @@ impl<T> ComponentPool<T> {
     }
 }
 
+/// The unique family of a component.
 pub type Family = usize;
 
+/// Generates the next unique family. This method should never be called manually. Concrete
+/// components should be passed into the `simulation!` macro, which will setup the families.
 pub unsafe fn next_family() -> Family {
     static mut NEXT_FAMILY: Family = 0;
 
@@ -57,10 +60,17 @@ pub unsafe fn next_family() -> Family {
     next
 }
 
+/// Trait implemented by all components in order to distinguish stores of different components.
+/// this trait should never by implemented manually. Concrete components should be passed into the
+/// `simulation!` macro, which will implement this trait for each component.
 pub trait Component: 'static {
+    /// Returns the unique `Family` for the `Component`.
     fn family() -> Family;
 }
 
+/// Used to implement the component trait for a given type. This macro should never be called
+/// manually. Concrete components should be passed into the `simulation!` macro, which will call
+/// this macro.
 #[macro_export]
 macro_rules! component {
     { $C:ident : $F:ident } => {
@@ -92,10 +102,6 @@ impl<C: Component> ComponentStore<C> {
             map: VecMap::new(),
             pool: ComponentPool::new(),
         }
-    }
-
-    pub fn has_component(&self, entity: Entity) -> bool {
-        self.map.contains_key(entity)
     }
 
     pub fn add(&mut self, entity: Entity, data: C) {
