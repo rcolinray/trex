@@ -46,7 +46,7 @@ macro_rules! simulation {
         }
 
         pub struct Simulation {
-            pub world: World,
+            pub world: $crate::World,
             pub events: Events,
             received_halt: bool,
 
@@ -59,7 +59,7 @@ macro_rules! simulation {
             pub fn new() -> Simulation {
                 Simulation {
                     world: {
-                        let mut world = World::new();
+                        let mut world = $crate::World::new();
                         $(
                             world.register_component::<$C>();
                         )+
@@ -73,7 +73,7 @@ macro_rules! simulation {
                 }
             }
 
-            pub fn setup<F>(&mut self, setup_fn: F) where F: FnOnce(&mut World, &mut Events) {
+            pub fn setup<F>(&mut self, setup_fn: F) where F: FnOnce(&mut $crate::World, &mut Events) {
                 setup_fn(&mut self.world, &mut self.events);
             }
 
