@@ -34,7 +34,7 @@ impl ComponentFilter {
     }
 }
 
-pub trait ComponentStorage {
+pub trait ComponentStore {
     fn new() -> Self;
     fn add<T: FamilyMember>(&mut self, entity: Entity, component: T);
     fn get<T: FamilyMember>(&self, entity: Entity) -> Option<&T>;
@@ -44,7 +44,7 @@ pub trait ComponentStorage {
 }
 
 /// Contains all entities and their components.
-pub struct World<T: ComponentStorage> {
+pub struct World<T: ComponentStore> {
     masks: VecMap<BitSet>,
     store: T,
     pool: IdPool,
@@ -52,7 +52,7 @@ pub struct World<T: ComponentStorage> {
     tags_by_entity: VecMap<String>,
 }
 
-impl<T: ComponentStorage> World<T> {
+impl<T: ComponentStore> World<T> {
     /// Create an empty `World`.
     pub fn new() -> World<T> {
         World {

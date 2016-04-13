@@ -1,15 +1,15 @@
-use super::system::SystemStorage;
-use super::world::{ComponentStorage, World};
-use super::event::{EventReceiver, EventSender};
+use super::system::SystemStore;
+use super::world::{ComponentStore, World};
+use super::event::{EventQueue, EventEmitter};
 
-pub struct Simulation<S: SystemStorage, C: ComponentStorage, Q: EventReceiver<E>, E: EventSender> {
+pub struct Simulation<S: SystemStore, C: ComponentStore, Q: EventQueue<E>, E: EventEmitter> {
     systems: S,
     world: World<C>,
     queue: Q,
     emitter: E,
 }
 
-impl<S: SystemStorage, C: ComponentStorage, Q: EventReceiver<E>, E: EventSender> Simulation<S, C, Q, E> {
+impl<S: SystemStore, C: ComponentStore, Q: EventQueue<E>, E: EventEmitter> Simulation<S, C, Q, E> {
     pub fn new() -> Simulation<S, C, Q, E> {
         Simulation {
             systems: S::new(),

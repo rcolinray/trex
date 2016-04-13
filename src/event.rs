@@ -2,14 +2,14 @@ use std::slice;
 
 use super::family::FamilyMember;
 
-pub trait EventReceiver<T: EventSender> {
+pub trait EventQueue<T: EventEmitter> {
     fn new() -> Self;
     fn receive<U: FamilyMember>(&self) -> Iter<U>;
     fn flush(&mut self);
     fn merge(&mut self, sender: &mut T);
 }
 
-pub trait EventSender {
+pub trait EventEmitter {
     fn new() -> Self;
     fn emit<T: FamilyMember>(&mut self, event: T);
 }

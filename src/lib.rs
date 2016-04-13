@@ -117,10 +117,10 @@ mod world;
 mod wrapper;
 
 pub use component::InnerComponentStore;
-pub use event::{EventReceiver, EventSender, InnerEventQueue, InnerEventEmitter, Iter};
+pub use event::{EventQueue, EventEmitter, InnerEventQueue, InnerEventEmitter, Iter};
 pub use family::{Family, FamilyMember, FamilyStore};
 pub use simulation::Simulation;
-pub use system::{SystemStorage, System};
+pub use system::{SystemStore, System};
 pub use time::calc_millis;
-pub use world::{Entity, ComponentFilter, ComponentStorage, World};
+pub use world::{Entity, ComponentFilter, ComponentStore, World};
 pub use wrapper::Wrapper;

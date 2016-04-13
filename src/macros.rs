@@ -129,13 +129,13 @@ macro_rules! events {
             }
         }
 
-        pub struct EventQueue {
+        pub struct Events {
             wrappers: vec_map::VecMap<EventQueueWrapper>,
         }
 
-        impl $crate::EventReceiver<EventEmitter> for EventQueue {
-            fn new() -> EventQueue {
-                EventQueue {
+        impl $crate::EventQueue<Emitter> for Events {
+            fn new() -> Events {
+                Events {
                     wrappers: {
                         let mut map = vec_map::VecMap::new();
                         $(
@@ -163,7 +163,7 @@ macro_rules! events {
                 }
             }
 
-            fn merge(&mut self, emitter: &mut EventEmitter) {
+            fn merge(&mut self, emitter: &mut Emitter) {
                 for (family, emitter_wrapper) in emitter.wrappers.iter_mut() {
                     if let Some(wrapper) = self.wrappers.get_mut(family) {
                         wrapper.merge(emitter_wrapper);
@@ -172,13 +172,13 @@ macro_rules! events {
             }
         }
 
-        pub struct EventEmitter {
+        pub struct Emitter {
             wrappers: vec_map::VecMap<EventEmitterWrapper>,
         }
 
-        impl $crate::EventSender for EventEmitter {
-            fn new() -> EventEmitter {
-                EventEmitter {
+        impl $crate::EventEmitter for Emitter {
+            fn new() -> Emitter {
+                Emitter {
                     wrappers: {
                         let mut map = vec_map::VecMap::new();
                         $(
@@ -268,13 +268,13 @@ macro_rules! components {
             }
         }
 
-        pub struct  ComponentStore {
+        pub struct  Components {
             wrappers: vec_map::VecMap<ComponentStoreWrapper>,
         }
 
-        impl $crate::ComponentStorage for ComponentStore {
-            fn new() -> ComponentStore {
-                ComponentStore {
+        impl $crate::ComponentStore for Components {
+            fn new() -> Components {
+                Components {
                     wrappers: {
                         let mut map = vec_map::VecMap::new();
                         $(
@@ -348,8 +348,8 @@ macro_rules! systems {
         }
 
         impl SystemWrapper {
-            fn update<C, R, S>(&mut self, world: &mut World<C>, queue: &R, emitter: &mut S, dt: f32)
-                where C: $crate::ComponentStorage, R: $crate::EventReceiver<S>, S: $crate::EventSender {
+            fn update<C, Q, E>(&mut self, world: &mut World<C>, queue: &Q, emitter: &mut E, dt: f32)
+                where C: $crate::ComponentStore, Q: $crate::EventQueue<E>, E: $crate::EventEmitter {
                 match self {
                     $(
                         &mut SystemWrapper::$T(ref mut system) => system.update(world, queue, emitter, dt)
@@ -358,14 +358,14 @@ macro_rules! systems {
             }
         }
 
-        pub struct SystemStore {
+        pub struct Systems {
             systems: Vec<SystemWrapper>,
             halt: bool,
         }
 
-        impl $crate::SystemStorage for SystemStore {
-            fn new() -> SystemStore {
-                SystemStore {
+        impl $crate::SystemStore for Systems {
+            fn new() -> Systems {
+                Systems {
                     systems: {
                         let mut list = Vec::new();
                         $(
@@ -381,8 +381,8 @@ macro_rules! systems {
                 self.halt
             }
 
-            fn update<C, R, S>(&mut self, world: &mut World<C>, queue: &mut R, emitter: &mut S, dt: f32)
-                where C: $crate::ComponentStorage, R: $crate::EventReceiver<S>, S: $crate::EventSender {
+            fn update<C, Q, E>(&mut self, world: &mut World<C>, queue: &mut Q, emitter: &mut E, dt: f32)
+                where C: $crate::ComponentStore, Q: $crate::EventQueue<E>, E: $crate::EventEmitter {
                 for wrapper in self.systems.iter_mut() {
                     wrapper.update(world, queue, emitter, dt);
                     queue.merge(emitter);

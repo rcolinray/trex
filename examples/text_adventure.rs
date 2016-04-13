@@ -77,7 +77,7 @@ impl System for InputSystem {
     }
 
     fn update<C, Q, E>(&mut self, _world: &mut World<C>, _queue: &Q, emitter: &mut E, _dt: f32)
-        where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender {
+        where C: ComponentStore, Q: EventQueue<E>, E: EventEmitter {
         while let Ok(input) = self.rx.try_recv() {
             emitter.emit(Input(input));
         }
@@ -92,7 +92,7 @@ impl System for OutputSystem {
     }
 
     fn update<C, Q, E>(&mut self, _world: &mut World<C>, queue: &Q, _emitter: &mut E, _dt: f32)
-        where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender {
+        where C: ComponentStore, Q: EventQueue<E>, E: EventEmitter {
         for &Output(ref output) in queue.receive::<Output>() {
             print!("{}", output);
         }
@@ -109,7 +109,7 @@ impl System for CommandSystem {
     }
 
     fn update<C, Q, E>(&mut self, world: &mut World<C>, queue: &Q, emitter: &mut E, _dt: f32)
-        where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender {
+        where C: ComponentStore, Q: EventQueue<E>, E: EventEmitter {
         for &Input(ref input) in queue.receive::<Input>() {
             match input.trim() {
                 "look" => {
@@ -141,7 +141,7 @@ impl System for CommandSystem {
 systems!(InputSystem, CommandSystem, OutputSystem);
 
 fn main() {
-    let mut simulation = Simulation::<SystemStore, ComponentStore, EventQueue, EventEmitter>::new();
+    let mut simulation = Simulation::<Systems, Components, Events, Emitter>::new();
 
     simulation.setup(|world, emitter| {
         let player = world.create();

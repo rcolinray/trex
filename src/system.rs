@@ -1,11 +1,11 @@
-use super::world::{ComponentStorage, World};
-use super::event::{EventReceiver, EventSender};
+use super::world::{ComponentStore, World};
+use super::event::{EventQueue, EventEmitter};
 
-pub trait SystemStorage {
+pub trait SystemStore {
 	fn new() -> Self;
     fn halt(&self) -> bool;
     fn update<C, Q, E>(&mut self, world: &mut World<C>, queue: &mut Q, emitter: &mut E, dt: f32)
-    	where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender;
+    	where C: ComponentStore, Q: EventQueue<E>, E: EventEmitter;
 }
 
 /// Trait that must be implemented by all systems in the `Simulation`. The generic parameter `E` is
@@ -16,5 +16,6 @@ pub trait System {
 
     /// This method is called each frame, giving the `System` mutable access to the `World` and
     /// `Events`. `dt` is the time in milliseconds since the last update.
-    fn update<C, Q, E>(&mut self, world: &mut World<C>, queue: &Q, emitter: &mut E, dt: f32) where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender;
+    fn update<C, Q, E>(&mut self, world: &mut World<C>, queue: &Q, emitter: &mut E, dt: f32)
+    	where C: ComponentStore, Q: EventQueue<E>, E: EventEmitter;
 }
