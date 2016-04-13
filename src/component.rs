@@ -2,6 +2,7 @@ use vec_map::VecMap;
 
 use super::id::{Id, IdPool};
 use super::entity::Entity;
+use super::family::{Family, FamilyMember, FamilyStore};
 
 struct ComponentPool<T> {
     data: Vec<T>,
@@ -47,58 +48,18 @@ impl<T> ComponentPool<T> {
     }
 }
 
-/// The unique family of a component.
-pub type Family = usize;
-
-/// Generates the next unique family. This method should never be called manually. Concrete
-/// components should be passed into the `simulation!` macro, which will setup the families.
-pub unsafe fn next_family() -> Family {
-    static mut NEXT_FAMILY: Family = 0;
-
-    let next = NEXT_FAMILY;
-    NEXT_FAMILY += 1;
-    next
-}
-
-/// Trait implemented by all components in order to distinguish stores of different components.
-/// this trait should never by implemented manually. Concrete components should be passed into the
-/// `simulation!` macro, which will implement this trait for each component.
-pub trait Component: 'static {
-    /// Returns the unique `Family` for the `Component`.
-    fn family() -> Family;
-}
-
-/// Used to implement the component trait for a given type. This macro should never be called
-/// manually. Concrete components should be passed into the `simulation!` macro, which will call
-/// this macro.
-#[macro_export]
-macro_rules! component {
-    { $C:ident : $F:ident } => {
-        lazy_static! {
-            pub static ref $F: $crate::Family = unsafe { $crate::next_family() };
-        }
-
-        impl $crate::Component for $C {
-            fn family() -> $crate::Family {
-                *$F
-            }
-        }
-    }
-}
-
-pub trait AnyComponentStore {
-    fn family(&self) -> Family;
+pub trait AnyComponentStore: FamilyStore {
     fn remove(&mut self, entity: Entity);
 }
 
-pub struct ComponentStore<C: Component> {
+pub struct InnerComponentStore<C: FamilyMember> {
     map: VecMap<Id>,
     pool: ComponentPool<C>,
 }
 
-impl<C: Component> ComponentStore<C> {
-    pub fn new() -> ComponentStore<C> {
-        ComponentStore {
+impl<C: FamilyMember> InnerComponentStore<C> {
+    pub fn new() -> InnerComponentStore<C> {
+        InnerComponentStore {
             map: VecMap::new(),
             pool: ComponentPool::new(),
         }
@@ -124,11 +85,13 @@ impl<C: Component> ComponentStore<C> {
     }
 }
 
-impl<C: Component> AnyComponentStore for ComponentStore<C> {
+impl<C: FamilyMember> FamilyStore for InnerComponentStore<C> {
     fn family(&self) -> Family {
         C::family()
     }
+}
 
+impl<C: FamilyMember> AnyComponentStore for InnerComponentStore<C> {
     fn remove(&mut self, entity: Entity) {
         if let Some(&id) = self.map.get(entity) {
             self.pool.remove(id);

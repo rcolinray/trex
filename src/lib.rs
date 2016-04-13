@@ -101,23 +101,23 @@
 //! }
 //! ```
 
-#[macro_use]
 extern crate vec_map;
 extern crate bit_set;
 
-#[macro_use]
 mod component;
 mod entity;
 mod event;
+mod family;
 mod id;
-#[macro_use]
 mod simulation;
 mod system;
 mod time;
 
-pub use component::{Component, Family, next_family};
+#[macro_use]
+mod macros;
+
 pub use entity::{ComponentFilter, Entity, World};
-pub use event::EventQueue;
-pub use simulation::Halt;
+pub use event::{EventQueue, EventEmitter};
+pub use simulation::{Halt, Simulation};
 pub use system::System;
 pub use time::calc_millis;
