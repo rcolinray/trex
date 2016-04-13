@@ -159,7 +159,7 @@ impl World {
     }
 
     /// Returns a list of all `Entity`s with a given set of `Component`s.
-    pub fn filter_entities(&self, filter: &ComponentFilter) -> Vec<Entity> {
+    pub fn filter(&self, filter: &ComponentFilter) -> Vec<Entity> {
         self.pool.reserved()
             .filter(|&entity| {
                 let mask = self.masks.get(entity).unwrap();

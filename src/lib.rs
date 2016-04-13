@@ -116,6 +116,7 @@ mod time;
 #[macro_use]
 mod macros;
 
+pub use family::{Family, FamilyMember};
 pub use entity::{ComponentFilter, Entity, World};
 pub use event::{EventQueue, EventEmitter};
 pub use simulation::{Halt, Simulation};

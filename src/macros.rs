@@ -27,6 +27,6 @@ macro_rules! components {
 #[macro_export]
 macro_rules! events {
     ( $( $T:ident ),+ ) => {
-        family!(@1, $( $T ),+ );
+        family!(@1, $( $T, )+ );
     }
 }
