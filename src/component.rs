@@ -1,7 +1,7 @@
 use vec_map::VecMap;
 
 use super::id::{Id, IdPool};
-use super::entity::Entity;
+use super::world::Entity;
 use super::family::{Family, FamilyMember, FamilyStore};
 
 struct ComponentPool<T> {

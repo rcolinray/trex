@@ -1,4 +1,4 @@
-use super::entity::World;
+use super::world::World;
 use super::event::{EventQueue, EventEmitter};
 
 /// Trait that must be implemented by all systems in the `Simulation`. The generic parameter `E` is

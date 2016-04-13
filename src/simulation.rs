@@ -1,5 +1,5 @@
 use super::family::{Family, FamilyMember};
-use super::entity::World;
+use super::world::World;
 use super::event::{EventQueue, EventEmitter};
 use super::system::System;
 
