@@ -5,7 +5,8 @@ use vec_map::VecMap;
 use bit_set::BitSet;
 
 use super::id::{Id, IdPool};
-use super::component::{Component, AnyComponentStore, ComponentStore};
+use super::component::{AnyComponentStore, InnerComponentStore};
+use super::family::FamilyMember;
 
 /// Used to filter the list of entities based on the components that are attached to them.
 pub struct ComponentFilter {
@@ -21,7 +22,7 @@ impl ComponentFilter {
     }
 
     /// Extend the filter to include the given component type.
-    pub fn with<C: Component>(mut self) -> Self {
+    pub fn with<C: FamilyMember>(mut self) -> Self {
         self.mask.insert(C::family());
         self
     }
@@ -57,8 +58,8 @@ impl World {
     }
 
     /// Register a new component class.
-    pub fn register_component<C: Component>(&mut self) {
-        let store = ComponentStore::<C>::new();
+    pub fn register<C: 'static + FamilyMember>(&mut self) {
+        let store = InnerComponentStore::<C>::new();
         self.stores.insert(C::family(), Box::new(store));
     }
 
@@ -157,8 +158,8 @@ impl World {
         }
     }
 
-    /// Returns a list of all `Entity`s with a given set of `Component`s.
-    pub fn filter_entities(&self, filter: &ComponentFilter) -> Vec<Entity> {
+    /// Returns a list of all `Entity`s with a given set of components.
+    pub fn filter(&self, filter: &ComponentFilter) -> Vec<Entity> {
         self.pool.reserved()
             .filter(|&entity| {
                 let mask = self.masks.get(entity).unwrap();
@@ -167,19 +168,19 @@ impl World {
             .collect::<Vec<Entity>>()
     }
 
-    /// Attach a `Component` to an `Entity`.
-    pub fn add<C: Component>(&mut self, entity: Entity, component: C) {
+    /// Attach a component to an `Entity`.
+    pub fn add<C: FamilyMember>(&mut self, entity: Entity, component: C) {
         self.set_has_component::<C>(entity, true);
         self.get_store_mut::<C>().add(entity, component);
     }
 
-    /// Remove a `Component` from an `Entity`.
-    pub fn remove<C: Component>(&mut self, entity: Entity) {
+    /// Remove a component from an `Entity`.
+    pub fn remove<C: FamilyMember>(&mut self, entity: Entity) {
         self.set_has_component::<C>(entity, false);
         self.get_store_mut::<C>().remove(entity);
     }
 
-    fn set_has_component<C: Component>(&mut self, entity: Entity, has_component: bool) {
+    fn set_has_component<C: FamilyMember>(&mut self, entity: Entity, has_component: bool) {
         let mask = self.masks.get_mut(entity).unwrap();
         let family = C::family();
 
@@ -190,31 +191,31 @@ impl World {
         }
     }
 
-    /// Returns `true` if the `Entity` has the `Component`, otherwise `false`.
-    pub fn has<C: Component>(&self, entity: Entity) -> bool {
+    /// Returns `true` if the `Entity` has the component, otherwise `false`.
+    pub fn has<C: FamilyMember>(&self, entity: Entity) -> bool {
         let mask = self.masks.get(entity).unwrap();
         mask.contains(C::family())
     }
 
-    /// Get a `Component` of an `Entity`.
-    pub fn get<C: Component>(&self, entity: Entity) -> Option<&C> {
+    /// Get a component of an `Entity`.
+    pub fn get<C: FamilyMember>(&self, entity: Entity) -> Option<&C> {
         let store = self.get_store::<C>();
         store.get(entity)
     }
 
-    /// Get a mutable `Component` of an `Entity`.
-    pub fn get_mut<C: Component>(&mut self, entity: Entity) -> Option<&mut C> {
+    /// Get a mutable component of an `Entity`.
+    pub fn get_mut<C: FamilyMember>(&mut self, entity: Entity) -> Option<&mut C> {
         let store = self.get_store_mut::<C>();
         store.get_mut(entity)
     }
 
-    fn get_store<C: Component>(&self) -> &Box<ComponentStore<C>> {
+    fn get_store<C: FamilyMember>(&self) -> &Box<InnerComponentStore<C>> {
         let store = self.stores.get(C::family()).unwrap();
         assert_eq!(store.family(), C::family());
         unsafe { transmute(store) }
     }
 
-    fn get_store_mut<C: Component>(&mut self) -> &mut Box<ComponentStore<C>> {
+    fn get_store_mut<C: FamilyMember>(&mut self) -> &mut Box<InnerComponentStore<C>> {
         let store = self.stores.get_mut(C::family()).unwrap();
         assert_eq!(store.family(), C::family());
         unsafe { transmute(store) }

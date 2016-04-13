@@ -1,100 +1,63 @@
-/// Internal event used to stop the `Simulation`. The `halt` event queue will always be created.
+use super::family::{Family, FamilyMember};
+use super::world::World;
+use super::event::{EventQueue, EventEmitter};
+use super::system::System;
+
+/// Internal event used to stop the `Simulation`. This event is automatically
+/// registered.
 pub struct Halt;
 
-/// The core wiring for entity component systems built on `trex`. This macro takes a set of
-/// `Component`s, events, and `System`s, and creates a `Simulation` type that manages them.
-/// See the library documentation for an example of how this macro is used.
-#[macro_export]
-macro_rules! simulation {
-    {
-        components: {
-            $( $C:ident : $F:ident ),*
-        },
+impl FamilyMember for Halt {
+    fn family() -> Family {
+        0
+    }
+}
 
-        events: {
-            $( $queue:ident : $E:ident ),*
-        },
+/// Responsible for updating and passing events between systems.
+pub struct Simulation {
+    world: World,
+    queue: EventQueue,
+    emitter: EventEmitter,
+    systems: Vec<Box<System>>,
+    halt: bool,
+}
 
-        systems: {
-            $( $system:ident : $S:ident ),*
+impl Simulation {
+    /// Create a new `Simulation`.
+    pub fn new(world: World, mut queue: EventQueue, mut emitter: EventEmitter) -> Simulation {
+        queue.register::<Halt>();
+        emitter.register::<Halt>();
+
+        Simulation {
+            world: world,
+            queue: queue,
+            emitter: emitter,
+            systems: Vec::new(),
+            halt: false,
         }
-    } => {
-        $(
-            component! {
-                $C : $F
-            }
-        )*
+    }
 
-        pub struct Events {
-            pub halt: $crate::EventQueue<$crate::Halt>,
+    /// Register a `System`.
+    pub fn register<T: 'static + System>(&mut self, system: T) {
+        self.systems.push(Box::new(system));
+    }
 
-            $(
-                pub $queue: $crate::EventQueue<$E>,
-            )*
-        }
+    /// Returns `true` if the `Halt` event has been emitted, otherwise `false`.
+    pub fn halt(&self) -> bool {
+        self.halt
+    }
 
-        impl Events {
-            fn new() -> Events {
-                Events {
-                    halt: $crate::EventQueue::new(),
-
-                    $(
-                        $queue: $crate::EventQueue::new(),
-                    )*
-                }
-            }
-        }
-
-        pub struct Simulation {
-            pub world: $crate::World,
-            pub events: Events,
-            received_halt: bool,
-
-            $(
-                pub $system : $S
-            ),*
+    /// Perform a single simulation step.
+    pub fn update(&mut self, dt: f32) {
+        for system in &mut self.systems {
+            system.update(&mut self.world, &self.queue, &mut self.emitter, dt);
+            self.queue.merge(&mut self.emitter);
         }
 
-        impl Simulation {
-            pub fn new() -> Simulation {
-                Simulation {
-                    world: {
-                        let mut world = $crate::World::new();
-                        $(
-                            world.register_component::<$C>();
-                        )+
-                        world
-                    },
-                    events: Events::new(),
-                    received_halt: false,
-                    $(
-                        $system: $S::new()
-                    ),*
-                }
-            }
-
-            pub fn setup<F>(&mut self, setup_fn: F) where F: FnOnce(&mut $crate::World, &mut Events) {
-                setup_fn(&mut self.world, &mut self.events);
-            }
-
-            pub fn update(&mut self, dt: f32) {
-                $(
-                    self.$system.update(&mut self.world, &mut self.events, dt);
-                )*
-
-                $(
-                    self.events.$queue.flush();
-                )*
-
-                if let Some(_) = self.events.halt.receive().next() {
-                    self.received_halt = true;
-                }
-                self.events.halt.flush();
-            }
-
-            pub fn received_halt(&self) -> bool {
-                self.received_halt
-            }
+        if let Some(&Halt) = self.queue.receive::<Halt>().next() {
+            self.halt = true;
         }
+
+        self.queue.flush();
     }
 }
