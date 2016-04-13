@@ -13,5 +13,4 @@ vec_map = "0.6.0"
 bit-set = "0.4.0"
 
 [dev-dependencies]
-lazy_static = "0.1.15"
 ansi_term = "0.7.2"
