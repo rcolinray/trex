@@ -1,3 +1,4 @@
+#[doc(hidden)]
 #[macro_export]
 macro_rules! family {
     ( @$family:expr, ) => {};
@@ -17,6 +18,7 @@ macro_rules! family {
     };
 }
 
+/// Defines the component family.
 #[macro_export]
 macro_rules! components {
     ( $( $T:ident ), + ) => {
@@ -24,9 +26,12 @@ macro_rules! components {
     }
 }
 
+/// Defines the event family.
 #[macro_export]
 macro_rules! events {
     ( $( $T:ident ),+ ) => {
+        // Families start at 1 since the Halt event is automatically registered
+        // at 0.
         family!(@1, $( $T, )+ );
     }
 }

@@ -3,7 +3,8 @@ use super::world::World;
 use super::event::{EventQueue, EventEmitter};
 use super::system::System;
 
-/// Internal event used to stop the `Simulation`. The `halt` event queue will always be created.
+/// Internal event used to stop the `Simulation`. This event is automatically
+/// registered.
 pub struct Halt;
 
 impl FamilyMember for Halt {
@@ -12,6 +13,7 @@ impl FamilyMember for Halt {
     }
 }
 
+/// Responsible for updating and passing events between systems.
 pub struct Simulation {
     world: World,
     queue: EventQueue,
@@ -21,6 +23,7 @@ pub struct Simulation {
 }
 
 impl Simulation {
+    /// Create a new `Simulation`.
     pub fn new(world: World, mut queue: EventQueue, mut emitter: EventEmitter) -> Simulation {
         queue.register::<Halt>();
         emitter.register::<Halt>();
@@ -34,14 +37,17 @@ impl Simulation {
         }
     }
 
+    /// Register a `System`.
     pub fn register<T: 'static + System>(&mut self, system: T) {
         self.systems.push(Box::new(system));
     }
 
+    /// Returns `true` if the `Halt` event has been emitted, otherwise `false`.
     pub fn halt(&self) -> bool {
         self.halt
     }
 
+    /// Perform a single simulation step.
     pub fn update(&mut self, dt: f32) {
         for system in &mut self.systems {
             system.update(&mut self.world, &self.queue, &mut self.emitter, dt);

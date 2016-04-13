@@ -12,30 +12,17 @@ trait AnyEventQueue: FamilyStore {
 
 trait AnyEventEmitter: FamilyStore { }
 
-/// Allows for emitting events and iterating over them in the order that they were emitted.
-/// Events are immutable and queues are not flushed until the end of the frame, so multiple
-/// clients can receive events from the same queue.
-///
-/// # Examples
-///
-/// ```
-/// let mut queue = trex::EventQueue::<&str>::new();
-/// queue.emit("Hello!");
-/// assert_eq!(queue.receive().next(), Some(&"Hello!"));
-/// ```
 struct InnerEventQueue<T> {
     events: Vec<T>,
 }
 
 impl<T> InnerEventQueue<T> {
-    /// Create a new, empty `InnerEventQueue`.
     fn new() -> InnerEventQueue<T> {
         InnerEventQueue {
             events: Vec::new(),
         }
     }
 
-    /// Iterate over all events in the queue.
     fn receive(&self) -> Iter<T> {
         Iter::new(self.events.iter())
     }
@@ -48,7 +35,6 @@ impl<T: FamilyMember> FamilyStore for InnerEventQueue<T> {
 }
 
 impl<T: FamilyMember> AnyEventQueue for InnerEventQueue<T> {
-    /// Clear all events from the queue.
     fn flush(&mut self) {
         self.events.clear();
     }
@@ -85,14 +71,12 @@ struct InnerEventEmitter<T> {
 }
 
 impl<T> InnerEventEmitter<T> {
-    /// Create a new, empty `InnerEventEmitter`.
     fn new() -> InnerEventEmitter<T> {
         InnerEventEmitter {
             events: Vec::new(),
         }
     }
 
-    /// Emit a new event to the queue.
     fn emit(&mut self, event: T) {
         self.events.push(event);
     }
@@ -108,33 +92,40 @@ impl<T: FamilyMember> AnyEventEmitter for InnerEventEmitter<T> {
 
 }
 
+/// Used to receive registered events.
 pub struct EventQueue {
     queues: VecMap<Box<AnyEventQueue>>,
 }
 
 impl EventQueue {
+    /// Create a new, empty `EventQueue`.
     pub fn new() -> EventQueue {
         EventQueue {
             queues: VecMap::new(),
         }
     }
 
+    /// Register a new event type.
     pub fn register<T: 'static + FamilyMember>(&mut self) {
         self.queues.insert(T::family(), Box::new(InnerEventQueue::<T>::new()));
     }
 
+    /// Iterate over all events of the given type that have been emitted during
+    /// the current simulation step.
     pub fn receive<T: FamilyMember>(&self) -> Iter<T> {
         let any_queue = self.queues.get(T::family()).unwrap();
         let queue: &Box<InnerEventQueue<T>> = unsafe { transmute(any_queue) };
         queue.receive()
     }
 
+    /// Clear all events from the queue.
     pub fn flush(&mut self) {
         for (_, any_queue) in self.queues.iter_mut() {
             any_queue.flush();
         }
     }
 
+    /// Merge events that were emitted into the queue.
     pub fn merge(&mut self, emitter: &mut EventEmitter) {
         for (family, any_emitter) in emitter.emitters.iter_mut() {
             let any_queue = self.queues.get_mut(family).unwrap();
@@ -143,21 +134,25 @@ impl EventQueue {
     }
 }
 
+/// Used to emit registered events.
 pub struct EventEmitter {
     emitters: VecMap<Box<AnyEventEmitter>>,
 }
 
 impl EventEmitter {
+    /// Create a new, empty `EventEmitter`.
     pub fn new() -> EventEmitter {
         EventEmitter {
             emitters: VecMap::new(),
         }
     }
 
+    /// Register a new event type.
     pub fn register<T: 'static + FamilyMember>(&mut self) {
         self.emitters.insert(T::family(), Box::new(InnerEventEmitter::<T>::new()));
     }
 
+    /// Emit a registered event type.
     pub fn emit<T: FamilyMember>(&mut self, event: T) {
         let any_emitter = self.emitters.get_mut(T::family()).unwrap();
         let emitter: &mut Box<InnerEventEmitter<T>> = unsafe { transmute(any_emitter) };
