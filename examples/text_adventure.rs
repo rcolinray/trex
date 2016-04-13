@@ -1,7 +1,7 @@
-#[macro_use]
-extern crate lazy_static;
+#![feature(specialization)]
 #[macro_use]
 extern crate trex;
+extern crate vec_map;
 extern crate ansi_term;
 
 use std::io::{self, Write};
@@ -9,7 +9,7 @@ use std::thread::{spawn, sleep};
 use std::sync::mpsc::{channel, Receiver};
 use std::time::{Duration, SystemTime};
 
-use trex::{Entity, World, System, calc_millis};
+use trex::*;
 
 use ansi_term::Style;
 
@@ -43,13 +43,18 @@ impl Actor {
     }
 }
 
+components!(Room, Actor);
+
 pub struct Input(pub String);
+pub struct Output(pub String);
+
+events!(Input, Output);
 
 pub struct InputSystem {
     rx: Receiver<String>,
 }
 
-impl System<Events> for InputSystem {
+impl System for InputSystem {
     fn new() -> InputSystem {
         let (tx, rx) = channel();
 
@@ -71,24 +76,24 @@ impl System<Events> for InputSystem {
         }
     }
 
-    fn update(&mut self, _world: &mut World, events: &mut Events, _dt: f32) {
+    fn update<C, Q, E>(&mut self, _world: &mut World<C>, _queue: &Q, emitter: &mut E, _dt: f32)
+        where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender {
         while let Ok(input) = self.rx.try_recv() {
-            events.input.emit(Input(input));
+            emitter.emit(Input(input));
         }
     }
 }
 
-pub struct Output(pub String);
-
 pub struct OutputSystem;
 
-impl System<Events> for OutputSystem {
+impl System for OutputSystem {
     fn new() -> OutputSystem {
         OutputSystem
     }
 
-    fn update(&mut self, _world: &mut World, events: &mut Events, _dt: f32) {
-        for &Output(ref output) in events.output.receive() {
+    fn update<C, Q, E>(&mut self, _world: &mut World<C>, queue: &Q, _emitter: &mut E, _dt: f32)
+        where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender {
+        for &Output(ref output) in queue.receive::<Output>() {
             print!("{}", output);
         }
 
@@ -98,13 +103,14 @@ impl System<Events> for OutputSystem {
 
 pub struct CommandSystem;
 
-impl System<Events> for CommandSystem {
+impl System for CommandSystem {
     fn new() -> CommandSystem {
         CommandSystem
     }
 
-    fn update(&mut self, world: &mut World, events: &mut Events, _dt: f32) {
-        for &Input(ref input) in events.input.receive() {
+    fn update<C, Q, E>(&mut self, world: &mut World<C>, queue: &Q, emitter: &mut E, _dt: f32)
+        where C: ComponentStorage, Q: EventReceiver<E>, E: EventSender {
+        for &Input(ref input) in queue.receive::<Input>() {
             match input.trim() {
                 "look" => {
                     let player = world.lookup("Player").unwrap();
@@ -114,46 +120,30 @@ impl System<Events> for CommandSystem {
                     let output = format!("{}\n{}\n",
                         Style::new().bold().underline().paint(room.name.clone()),
                         room.description);
-                    events.output.emit(Output(output));
+                    emitter.emit(Output(output));
                 },
 
                 "quit" => {
-                    events.halt.emit(trex::Halt);
+                    emitter.emit(Halt);
                     break;
                 },
 
                 _ => {
-                    events.output.emit(Output(String::from("Huh?\n")));
+                    emitter.emit(Output(String::from("Huh?\n")));
                 },
             };
 
-            events.output.emit(Output(String::from("> ")));
+            emitter.emit(Output(String::from("> ")));
         }
     }
 }
 
-simulation! {
-    components: {
-        Room: ROOM,
-        Actor: ACTOR
-    },
-
-    events: {
-        input: Input,
-        output: Output
-    },
-
-    systems: {
-        input: InputSystem,
-        command: CommandSystem,
-        output: OutputSystem
-    }
-}
+systems!(InputSystem, CommandSystem, OutputSystem);
 
 fn main() {
-    let mut simulation = Simulation::new();
+    let mut simulation = Simulation::<SystemStore, ComponentStore, EventQueue, EventEmitter>::new();
 
-    simulation.setup(|world, events| {
+    simulation.setup(|world, emitter| {
         let player = world.create();
         world.tag(player, "Player");
         let entrance = world.create();
@@ -165,7 +155,7 @@ fn main() {
         world.add(player, actor);
         world.add(entrance, room);
 
-        events.output.emit(Output(String::from("> ")));
+        emitter.emit(Output(String::from("> ")));
     });
 
     let mut last = SystemTime::now();
@@ -178,7 +168,7 @@ fn main() {
             simulation.update(dt_millis);
             last = now;
 
-            if simulation.received_halt() {
+            if simulation.halt() {
                 break;
             }
         }
