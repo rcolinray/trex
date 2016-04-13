@@ -158,7 +158,7 @@ impl World {
         }
     }
 
-    /// Returns a list of all `Entity`s with a given set of `Component`s.
+    /// Returns a list of all `Entity`s with a given set of components.
     pub fn filter(&self, filter: &ComponentFilter) -> Vec<Entity> {
         self.pool.reserved()
             .filter(|&entity| {
@@ -168,13 +168,13 @@ impl World {
             .collect::<Vec<Entity>>()
     }
 
-    /// Attach a `Component` to an `Entity`.
+    /// Attach a component to an `Entity`.
     pub fn add<C: FamilyMember>(&mut self, entity: Entity, component: C) {
         self.set_has_component::<C>(entity, true);
         self.get_store_mut::<C>().add(entity, component);
     }
 
-    /// Remove a `Component` from an `Entity`.
+    /// Remove a component from an `Entity`.
     pub fn remove<C: FamilyMember>(&mut self, entity: Entity) {
         self.set_has_component::<C>(entity, false);
         self.get_store_mut::<C>().remove(entity);
@@ -191,19 +191,19 @@ impl World {
         }
     }
 
-    /// Returns `true` if the `Entity` has the `Component`, otherwise `false`.
+    /// Returns `true` if the `Entity` has the component, otherwise `false`.
     pub fn has<C: FamilyMember>(&self, entity: Entity) -> bool {
         let mask = self.masks.get(entity).unwrap();
         mask.contains(C::family())
     }
 
-    /// Get a `Component` of an `Entity`.
+    /// Get a component of an `Entity`.
     pub fn get<C: FamilyMember>(&self, entity: Entity) -> Option<&C> {
         let store = self.get_store::<C>();
         store.get(entity)
     }
 
-    /// Get a mutable `Component` of an `Entity`.
+    /// Get a mutable component of an `Entity`.
     pub fn get_mut<C: FamilyMember>(&mut self, entity: Entity) -> Option<&mut C> {
         let store = self.get_store_mut::<C>();
         store.get_mut(entity)
