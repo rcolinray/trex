@@ -105,19 +105,22 @@
 extern crate vec_map;
 extern crate bit_set;
 
-#[macro_use]
 mod component;
-mod entity;
 mod event;
+mod family;
 mod id;
-#[macro_use]
+#[macro_use] mod macros;
 mod simulation;
 mod system;
 mod time;
+mod world;
+mod wrapper;
 
-pub use component::{Component, Family, next_family};
-pub use entity::{ComponentFilter, Entity, World};
-pub use event::EventQueue;
-pub use simulation::Halt;
-pub use system::System;
+pub use component::InnerComponentStore;
+pub use event::{EventReceiver, EventSender, InnerEventQueue, InnerEventEmitter, Iter};
+pub use family::{Family, FamilyMember, FamilyStore};
+pub use simulation::Simulation;
+pub use system::{SystemStorage, System};
 pub use time::calc_millis;
+pub use world::{Entity, ComponentFilter, ComponentStorage, World};
+pub use wrapper::Wrapper;

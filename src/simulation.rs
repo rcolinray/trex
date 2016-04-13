@@ -1,100 +1,33 @@
-/// Internal event used to stop the `Simulation`. The `halt` event queue will always be created.
-pub struct Halt;
+use super::system::SystemStorage;
+use super::world::{ComponentStorage, World};
+use super::event::{EventReceiver, EventSender};
 
-/// The core wiring for entity component systems built on `trex`. This macro takes a set of
-/// `Component`s, events, and `System`s, and creates a `Simulation` type that manages them.
-/// See the library documentation for an example of how this macro is used.
-#[macro_export]
-macro_rules! simulation {
-    {
-        components: {
-            $( $C:ident : $F:ident ),*
-        },
+pub struct Simulation<S: SystemStorage, C: ComponentStorage, Q: EventReceiver<E>, E: EventSender> {
+    systems: S,
+    world: World<C>,
+    queue: Q,
+    emitter: E,
+}
 
-        events: {
-            $( $queue:ident : $E:ident ),*
-        },
-
-        systems: {
-            $( $system:ident : $S:ident ),*
+impl<S: SystemStorage, C: ComponentStorage, Q: EventReceiver<E>, E: EventSender> Simulation<S, C, Q, E> {
+    pub fn new() -> Simulation<S, C, Q, E> {
+        Simulation {
+            systems: S::new(),
+            world: World::new(),
+            queue: Q::new(),
+            emitter: E::new(),
         }
-    } => {
-        $(
-            component! {
-                $C : $F
-            }
-        )*
+    }
 
-        pub struct Events {
-            pub halt: $crate::EventQueue<$crate::Halt>,
+    pub fn setup<F>(&mut self, setup: F) where F: FnOnce(&mut World<C>, &mut E) {
+        setup(&mut self.world, &mut self.emitter);
+    }
 
-            $(
-                pub $queue: $crate::EventQueue<$E>,
-            )*
-        }
+    pub fn update(&mut self, dt: f32) {
+        self.systems.update(&mut self.world, &mut self.queue, &mut self.emitter, dt);
+    }
 
-        impl Events {
-            fn new() -> Events {
-                Events {
-                    halt: $crate::EventQueue::new(),
-
-                    $(
-                        $queue: $crate::EventQueue::new(),
-                    )*
-                }
-            }
-        }
-
-        pub struct Simulation {
-            pub world: $crate::World,
-            pub events: Events,
-            received_halt: bool,
-
-            $(
-                pub $system : $S
-            ),*
-        }
-
-        impl Simulation {
-            pub fn new() -> Simulation {
-                Simulation {
-                    world: {
-                        let mut world = $crate::World::new();
-                        $(
-                            world.register_component::<$C>();
-                        )+
-                        world
-                    },
-                    events: Events::new(),
-                    received_halt: false,
-                    $(
-                        $system: $S::new()
-                    ),*
-                }
-            }
-
-            pub fn setup<F>(&mut self, setup_fn: F) where F: FnOnce(&mut $crate::World, &mut Events) {
-                setup_fn(&mut self.world, &mut self.events);
-            }
-
-            pub fn update(&mut self, dt: f32) {
-                $(
-                    self.$system.update(&mut self.world, &mut self.events, dt);
-                )*
-
-                $(
-                    self.events.$queue.flush();
-                )*
-
-                if let Some(_) = self.events.halt.receive().next() {
-                    self.received_halt = true;
-                }
-                self.events.halt.flush();
-            }
-
-            pub fn received_halt(&self) -> bool {
-                self.received_halt
-            }
-        }
+    pub fn halt(&self) -> bool {
+        self.systems.halt()
     }
 }

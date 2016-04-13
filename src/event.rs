@@ -1,41 +1,56 @@
 use std::slice;
 
-/// Allows for emitting events and iterating over them in the order that they were emitted.
-/// Events are immutable and queues are not flushed until the end of the frame, so multiple
-/// clients can receive events from the same queue.
-///
-/// # Examples
-///
-/// ```
-/// let mut queue = trex::EventQueue::<&str>::new();
-/// queue.emit("Hello!");
-/// assert_eq!(queue.receive().next(), Some(&"Hello!"));
-/// ```
-pub struct EventQueue<T> {
+use super::family::FamilyMember;
+
+pub trait EventReceiver<T: EventSender> {
+    fn new() -> Self;
+    fn receive<U: FamilyMember>(&self) -> Iter<U>;
+    fn flush(&mut self);
+    fn merge(&mut self, sender: &mut T);
+}
+
+pub trait EventSender {
+    fn new() -> Self;
+    fn emit<T: FamilyMember>(&mut self, event: T);
+}
+
+pub struct InnerEventQueue<T> {
     events: Vec<T>,
 }
 
-impl<T> EventQueue<T> {
-    /// Create a new, empty `EventQueue`.
-    pub fn new() -> EventQueue<T> {
-        EventQueue {
+impl<T> InnerEventQueue<T> {
+    pub fn new() -> InnerEventQueue<T> {
+        InnerEventQueue {
             events: Vec::new(),
         }
     }
 
-    /// Emit a new event to the queue.
-    pub fn emit(&mut self, event: T) {
-        self.events.push(event);
-    }
-
-    /// Iterate over all events in the queue.
     pub fn receive(&self) -> Iter<T> {
         Iter::new(self.events.iter())
     }
 
-    /// Clear all events from the queue.
     pub fn flush(&mut self) {
         self.events.clear();
+    }
+
+    pub fn merge(&mut self, emitter: &mut InnerEventEmitter<T>) {
+        self.events.append(&mut emitter.events);
+    }
+}
+
+pub struct InnerEventEmitter<T> {
+    events: Vec<T>,
+}
+
+impl<T> InnerEventEmitter<T> {
+    pub fn new() -> InnerEventEmitter<T> {
+        InnerEventEmitter {
+            events: Vec::new(),
+        }
+    }
+
+    pub fn emit(&mut self, event: T) {
+        self.events.push(event);
     }
 }
 
@@ -58,4 +73,3 @@ impl<'a, T: 'a> Iterator for Iter<'a, T> {
         self.iter.next()
     }
 }
-

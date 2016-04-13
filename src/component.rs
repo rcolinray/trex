@@ -1,7 +1,7 @@
 use vec_map::VecMap;
 
 use super::id::{Id, IdPool};
-use super::entity::Entity;
+use super::world::Entity;
 
 struct ComponentPool<T> {
     data: Vec<T>,
@@ -46,90 +46,39 @@ impl<T> ComponentPool<T> {
         }
     }
 }
-
-/// The unique family of a component.
-pub type Family = usize;
-
-/// Generates the next unique family. This method should never be called manually. Concrete
-/// components should be passed into the `simulation!` macro, which will setup the families.
-pub unsafe fn next_family() -> Family {
-    static mut NEXT_FAMILY: Family = 0;
-
-    let next = NEXT_FAMILY;
-    NEXT_FAMILY += 1;
-    next
-}
-
-/// Trait implemented by all components in order to distinguish stores of different components.
-/// this trait should never by implemented manually. Concrete components should be passed into the
-/// `simulation!` macro, which will implement this trait for each component.
-pub trait Component: 'static {
-    /// Returns the unique `Family` for the `Component`.
-    fn family() -> Family;
-}
-
-/// Used to implement the component trait for a given type. This macro should never be called
-/// manually. Concrete components should be passed into the `simulation!` macro, which will call
-/// this macro.
-#[macro_export]
-macro_rules! component {
-    { $C:ident : $F:ident } => {
-        lazy_static! {
-            pub static ref $F: $crate::Family = unsafe { $crate::next_family() };
-        }
-
-        impl $crate::Component for $C {
-            fn family() -> $crate::Family {
-                *$F
-            }
-        }
-    }
-}
-
-pub trait AnyComponentStore {
-    fn family(&self) -> Family;
-    fn remove(&mut self, entity: Entity);
-}
-
-pub struct ComponentStore<C: Component> {
+pub struct InnerComponentStore<T> {
     map: VecMap<Id>,
-    pool: ComponentPool<C>,
+    pool: ComponentPool<T>,
 }
 
-impl<C: Component> ComponentStore<C> {
-    pub fn new() -> ComponentStore<C> {
-        ComponentStore {
+impl<T> InnerComponentStore<T> {
+    pub fn new() -> InnerComponentStore<T> {
+        InnerComponentStore {
             map: VecMap::new(),
             pool: ComponentPool::new(),
         }
     }
 
-    pub fn add(&mut self, entity: Entity, data: C) {
+    pub fn add(&mut self, entity: Entity, data: T) {
         let id = self.pool.add(data);
         self.map.insert(entity, id);
     }
 
-    pub fn get(&self, entity: Entity) -> Option<&C> {
+    pub fn get(&self, entity: Entity) -> Option<&T> {
         match self.map.get(entity) {
             Some(&id) => self.pool.get(id),
             None => None,
         }
     }
 
-    pub fn get_mut(&mut self, entity: Entity) -> Option<&mut C> {
+    pub fn get_mut(&mut self, entity: Entity) -> Option<&mut T> {
         match self.map.get(entity) {
             Some(&id) => self.pool.get_mut(id),
             None => None,
         }
     }
-}
 
-impl<C: Component> AnyComponentStore for ComponentStore<C> {
-    fn family(&self) -> Family {
-        C::family()
-    }
-
-    fn remove(&mut self, entity: Entity) {
+    pub fn remove(&mut self, entity: Entity) {
         if let Some(&id) = self.map.get(entity) {
             self.pool.remove(id);
         }
